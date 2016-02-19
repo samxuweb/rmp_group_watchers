@@ -11,6 +11,7 @@ module Rmpgw
         alias_method_chain :autocomplete_for_user, :rmpgw
         alias_method_chain :append, :rmpgw
         alias_method_chain :create, :rmpgw
+        alias_method_chain :destroy, :rmpgw
       end
     end
 
@@ -41,12 +42,37 @@ module Rmpgw
           else
             user_ids = params[:user_id]
           end
+          groups = Group.where(:id => user_ids)
+          groups.each do |group|
+            Watcher.create(:watchable => @watched, :user_id => group.id)
+          end
           params[:watcher] = {}
           params[:watcher][:user_id] = User.joins("LEFT JOIN groups_users on groups_users.user_id = #{User.table_name}.id").active.where("groups_users.group_id in (:user_ids) or #{User.table_name}.id in (:user_ids)", user_ids: user_ids + [0]).uniq.sorted.map(&:id)
         end
 
         create_without_rmpgw
       end
+
+      def destroy_with_rmpgw
+	if params[:type] == 'Group'
+	  group = Group.find(params[:user_id])
+	  @watched.set_watcher(group, false)
+	  users_only_in_this_group = group.users
+	  other_group = Group.where(:id => @watched.watchers.map(&:user_id)).map(&:id)
+	  other_group.each do |g|
+	    users_only_in_this_group -= Group.find(g).users
+	  end
+	  users_only_in_this_group.collect{|user| @watched.set_watcher(user, false)}
+   	  respond_to do |format|
+            format.html { redirect_to :back }
+            format.js
+            format.api { render_api_ok }
+          end
+	elsif params[:type] == 'User'
+	  destroy_without_rmpgw
+	end
+      end	
+
     end
   end
 end

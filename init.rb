@@ -16,5 +16,7 @@ end
 Rails.application.config.to_prepare do
   Issue.send(:include, Rmpgw::IssuePatch)
   IssuesController.send(:include, Rmpgw::IssuesControllerPatch)
+  GroupsController.send(:include, Rmpgw::GroupsControllerPatch)
   WatchersController.send(:include, Rmpgw::WatchersControllerPatch)
+  WatchersHelper.send(:include, Rmpgw::WatchersHelperPatch)
 end
